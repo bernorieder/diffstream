@@ -1,0 +1,172 @@
+<!-- /templates/main.html -->
+<html>
+<head>
+    <title>diffstream v0.1</title>
+
+    <style>
+
+        body { font-family: Trebuchet MS, Arial, Helvetica, sans-serif; font-size:13px; margin:0px; }
+        h1 { padding: 10px; background-color: black; color: white; }
+        table { border-collapse: collapse; border: 1px solid black; font-size: 10px; }
+        td,th { border: 1px solid black; padding:2px; }
+
+        #main { padding:0px 10px 0px 10px; }
+
+        .section { border-top: 1px dotted; padding: 10px 0px 10px 0px; }
+
+        .listfile { margin: 0px; }
+
+        .listdiff { margin: 7px; }
+        .listdiffplus { background-color:#2ecc71; }
+        .listdiffminus { background-color:#e74c3c; }
+        .listcont { border: 1px solid; padding: 5px; margin: 5px; display: none; }
+
+        .button { border: 1px solid; padding: 0px 3px 0px 3px; }
+        .similarity { padding: 1px 3px 1px 3px; }
+
+    </style>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+    <script>
+
+        function unfold(id) {
+            $("#cont"+id).toggle()
+        }
+
+        function submit() {
+            
+            mydataset = $( "#mydataset" ).val();
+            mysearch = $("#mysearch" ).val();
+
+            var url = new URL(window.location.href);
+            url.searchParams.set('dataset',mydataset);
+            url.searchParams.set('search',mysearch);
+            window.location.href = url.href;
+        }
+
+    </script>
+
+</head>
+
+<body>
+    <h1>diffstream</h1>
+
+    <div id="main">
+
+        <p>A simple application for comparing document versions over time.</p>
+
+        <div class="section">
+            Select the dataset to work with:
+            <select id="mydataset">
+            {% for dataset in datasets %}
+                {% if currentset == dataset %}
+                    <option value="{{ dataset }}" selected>{{ dataset }}
+                {% else %}
+                    <option value="{{ dataset }}">{{ dataset }}
+                {% endif %}
+            {% endfor %}
+            </select>
+            and search for <input type="text" id="mysearch" value="{{ ",".join(search) }}" /> 
+            <input type="button" value="ok" onclick="submit()" />
+        
+            <br /><br />
+
+            <b>
+            current dataset: {{currentset}} <br />
+            {% if search|length > 0 %}
+                searching for: {{ ",".join(search) }}
+            {% endif %}
+            </b>
+        </div>
+
+        <div class="section">
+            <img src="static/plot_main.svg" />
+        </div>
+
+        <div class="section">
+        {% for i in range(0,files|length) %}
+            <div class="listfile">
+                <b>{{ files[i].date }}
+                - GunningFogIndex: {{ files[i]["readability"]["readability grades"]["GunningFogIndex"] }}
+                - Wordcount: {{ files[i]["wordcount"] }}
+                {% if search|length > 0 %}
+                    - Searchcount:
+                        {% for query in files[i]["search"] %}
+                            {{ query[0] }}:{{ query[1] }}
+                        {% endfor %}
+                {% endif %}
+               
+                - {{ files[i].filename }}
+            </div>
+            {% if i < files|length - 1 %}
+                <div class="listdiff">
+                    <span class="similarity" style="background-color: rgba(255, 0, 0, {{ 1-diffs[i].ratio }});">similarity {{ diffs[i].ratio }}</span>
+                    {% if diffs[i].ratio < 1 %}
+                        <span class="button" onclick="unfold('diff{{ i }}')">show differences</span>
+                        <span class="button" onclick="unfold('full{{ i }}')">show full</span>
+                    {% endif %}
+                </div>
+
+                <div class="listcont" id="contfull{{ i }}">
+                {% for passage in diffs[i].passages %}
+
+                    {% if passage[0:2] == "+ " %}
+                        <p class="listdiffplus">{{passage}}</p>
+                    {% endif %}
+
+                    {% if passage[0:2] == "- " %}
+                        <p class="listdiffminus">{{passage}}</p>
+                    {% endif %}
+
+                    {% if passage[0:2] == "  " %}
+                        <p>{{passage}}</p>
+                    {% endif %}
+
+                {% endfor %}
+                </div>
+
+                <div class="listcont" id="contdiff{{ i }}">
+                {% for passage in diffs[i].passages %}
+
+                    {% if passage[0:2] == "+ " %}
+                        <p class="listdiffplus">{{passage}}</p>
+                    {% endif %}
+
+                    {% if passage[0:2] == "- " %}
+                        <p class="listdiffminus">{{passage}}</p>
+                    {% endif %}
+
+                {% endfor %}
+                </div>
+
+            {% endif %}
+        {% endfor %}
+        </div>
+
+        <div class="section">
+            <table>
+            <tr>
+                <th>date</th>
+                <th>wordcount</th>
+                <th>readbility</th>
+            </tr>
+            {% for i in range(0,files|length) %}
+            <tr>
+                <td>{{ files[i].date }} </td>
+                <td>{{ files[i]["wordcount"] }}</td>
+                <td>{{ files[i]["readability"]["readability grades"]["GunningFogIndex"] }}</td>
+            </tr>
+            {% if i < files|length - 1 %}
+            <tr>
+                <td colspan="3">{{ diffs[i].ratio }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+            </table>
+        </div>
+    
+    </div>
+
+</body>
+</html>
